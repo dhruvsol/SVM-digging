@@ -1,30 +1,36 @@
-# Gossip Protocol Solana
+# Solana Gossip Protocol
 
-Gossip in solana does 2 things
+The Solana gossip protocol serves two primary functions:
 
-- Store Data
-- Send/Receive Request
+1. Data Storage
+2. Message Communication (Send/Receive)
 
-## Storing Data
+## Data Storage Architecture
 
-### Gossip Tables
+### Gossip Tables Overview
 
-- Solana's uses gossip tables to store data in agave client they are callend ( Cluster Replicated Data Store ).
+Solana implements gossip tables for data storage, known as Cluster Replicated Data Store in Agave client. The architecture consists of three main components:
 
-Main Sections
+1. **GossipData** (CrdsData in Agave)
 
-- `GossipData` # enum covering various data types ( CrdsData in agave )
-- `SignedGossipData` # Struct contains signature & GossipData ( CrdsValue in agave )
-- `GossipTable` # Data store ( Crds in agave )
+   - An enum covering various data types
 
-GossipTable is a IndexMap where the key is `GossipKey` ( CrdsValueLabel in agave ) and value is `GissupVersoinedData` ( VersionedCrdsValue in agave )
+2. **SignedGossipData** (CrdsValue in Agave)
 
-`GossipKey` defines how data is stored, since its a enum
+   - A struct containing:
+     - Signature
+     - GossipData
 
-The Currnt Keys are following
+3. **GossipTable** (Crds in Agave)
+   - Implemented as an IndexMap where:
+     - Key: `GossipKey` (CrdsValueLabel in Agave)
+     - Value: `GossipVersionedData` (VersionedCrdsValue in Agave)
 
-```
+### GossipKey Structure
 
+GossipKey, implemented as an enum, defines the data storage structure. Current key variants include:
+
+```rust
 #[derive(PartialEq, Hash, Eq, Clone, Debug)]
 pub enum CrdsValueLabel {
     LegacyContactInfo(Pubkey),
@@ -42,46 +48,47 @@ pub enum CrdsValueLabel {
     RestartLastVotedForkSlots(Pubkey),
     RestartHeaviestFork(Pubkey),
 }
-
 ```
 
-`GossipVersionedData` has `SignedGossipData` inserted with other metadata.
+### Data Management
 
-cursor is use to read the new data
+- `GossipVersionedData` includes `SignedGossipData` along with additional metadata
+- A cursor is used to track and read new data
+- Old data is periodically trimmed based on timestamps to maintain a maximum number of pubkeys
 
-### Removing old data
+## Message Communication
 
-Old data is preiodically trimmed to maintain max number of pubkeys, based on the timestamp
+### Message Processing
 
-# Sending / Receiving Request
+Network messages are received as raw bytes and must be:
 
-we receives raw bytes of messages from the network, so have to deserlialize and verify sig over them.
+1. Deserialized
+2. Signature verified
 
-### Message types over gossip
+### Message Types
 
-we have 4 main types of request we can receive from gossip
+The protocol supports four main message types:
 
-- Pull
-- Push
-- Prune
-- Ping/Pong
+1. Pull
+2. Push
+3. Prune
+4. Ping/Pong
 
-## Pull Messages
+### Pull Message System
 
-we have 2 types of Pull messages that we can receive - PullRequest - PullResponse
+#### Pull Request Structure
 
-### Building Pull Request
+- Includes a bloom filter representing `SignedGossipData` stored in the node's GossipTable
+- Uses multiple bloom filters based on N bytes of `SignedGossipData`
+- Example: With 3 bits of hash, 8 bloom filters would be used (2^N)
+- Similar to discriminator usage in Anchor accounts
 
-A pull request includes a bloom filter over the valuess stored in that nodes GossipTable to represet the `SignedGossipData`, so at the time of reciving the data the node can just look at
-the bloom filter can parse to get missing data and send them to the requesting node's
+#### Pull Response Mechanism
 
-Bloom filter is not one Large filter it has multiple of them based on N bytes of `SignedGossipData`.
+- Checks missing bloom filters from the original request
+- Uses `GossipTableShards` (CrdsShards in Agave) to locate filters
+- Sends missing data in response## GossipTableShards ( CrdsShards in agave )
 
-For example if we have 3 bits of hash we could use 8 bloom filter ( 2^N ) # This seems similar to descriminator we use in anchor accounts
+## GossipTableShards
 
-### Building Pull Responses
-
-Just checks the missing bloom filter from the original request and sends that in response.
-To find the filter we use `GossipTableShards`
-
-## GossipTableShards ( CrdsShards in agave )
+todo
