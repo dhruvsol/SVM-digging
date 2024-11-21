@@ -92,3 +92,21 @@ The protocol supports four main message types:
 ## GossipTableShards
 
 todo
+
+
+
+
+
+--------------------------- Solana Spotlight Gossip Protocol Notes -------------------
+
+### PAS ( Push Active Set )
+Vec of 25 nodes 
+PAS set is decided by Stake Bucket which means Log2 of node's stake // Might have been changed  
+#### PASE ( Push Active Set Entry )
+IndexMap<Pubkey, Bloom<Origins>>  // Using the bloom filter to quickly check the value
+
+Pruning maintains 2 IndexMap of origin list 
+1. Act as we can send messages to the origin 
+2. Act as we should not send messages to this origin
+
+Pruning happens based on the origin
